@@ -1,0 +1,30 @@
+# Environment variables
+.env
+.env.example
+
+# Node modules
+node_modules/
+
+# Logs
+logs
+*.log
+
+# Analysis outputs (can be regenerated)
+extracted-texts/
+cleaned-texts/
+claude_response.json
+ANALYSIS_RESULTS.md
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*~
+
+# Temporary files
+tmp/
+temp/

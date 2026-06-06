@@ -1,0 +1,22 @@
+{
+  "name": "exam-predictor",
+  "version": "1.0.0",
+  "description": "Exam topic predictor using Claude AI",
+  "scripts": {
+    "extract": "tsx scripts/extract.ts ./exam-papers ./extracted-texts",
+    "clean": "tsx scripts/clean.ts ./extracted-texts ./cleaned-texts",
+    "analyze": "tsx scripts/analyze.ts ./cleaned-texts",
+    "report": "tsx scripts/report.ts ./claude_response.json ./ANALYSIS_RESULTS.md"
+  },
+  "devDependencies": {
+    "@google/genai": "^0.7.0",
+    "@types/node": "^20.0.0",
+    "pdf-parse": "^1.1.1",
+    "tesseract.js": "^5.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2"
+  }
+}
