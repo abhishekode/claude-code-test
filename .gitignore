@@ -14,6 +14,7 @@ extracted-texts/
 cleaned-texts/
 claude_response.json
 ANALYSIS_RESULTS.md
+exam-papers/
 
 # OS-specific files
 .DS_Store
