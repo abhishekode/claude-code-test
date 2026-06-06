@@ -36,7 +36,7 @@ Choose **either** Gemini **or** Claude setup:
    ```
 3. **No script modifications needed** - the `analyze.ts` script is pre-configured for Gemini
 
-#### 🔹 Option B: Claude API (Anthropic)
+#### 🔹 Option B: Claude API (Anthropic) - DETAILED SETUP
 1. Get a key at [Anthropic Console](https://console.anthropic.com/)
 2. Install Anthropic SDK: 
    ```bash
@@ -120,6 +120,7 @@ Place your SSC CGL question paper PDFs in the `exam-papers/` folder. The skill w
 
 ## Running the Analysis
 
+### Using npx (Recommended - No Global Installation Needed)
 Execute these commands in sequence (same for both APIs once configured):
 
 ```bash
@@ -134,6 +135,23 @@ npx tsx scripts/analyze.ts ./cleaned-texts "SSC CGL" ./ai_response.json
 
 # Step 4: Generate the final report
 npx tsx scripts/report.ts ./ai_response.json ./ANALYSIS_RESULTS.md
+```
+
+### Alternative: Direct Execution (If tsx Installed Globally)
+If you prefer to install tsx globally (`npm install -g tsx`), you can run:
+
+```bash
+# Step 1: Extract text from PDFs
+tsx scripts/extract.ts ./exam-papers ./extracted-texts
+
+# Step 2: Clean the extracted text
+tsx scripts/clean.ts ./extracted-texts ./cleaned-texts
+
+# Step 3: Analyze with your chosen AI (Gemini or Claude)
+tsx scripts/analyze.ts ./cleaned-texts "SSC CGL" ./ai_response.json
+
+# Step 4: Generate the final report
+tsx scripts/report.ts ./ai_response.json ./ANALYSIS_RESULTS.md
 ```
 
 > **Note**: 
@@ -221,9 +239,19 @@ From a recent run (using either API):
 #5 Compound & Simple Interest                 ████████░░ 82%
 ```
 
-## License
+## Quick Start Summary
 
-This guide and the associated scripts are provided for educational purposes. SSC CGL is a trademark of the Staff Selection Commission, Government of India.
+### For Gemini API (Easiest):
+1. `npm install`
+2. Get Gemini key → add to `.env` as `GEMINI_API_KEY=...`
+3. Run the 4 npx commands above
+
+### For Claude API:
+1. `npm install`
+2. `npm install @anthropic-ai/sdk`
+3. Get Claude key → add to `.env` as `ANTHROPIC_API_KEY=...`
+4. Modify `scripts/analyze.ts` using the instructions in Section 2B
+5. Run the 4 npx commands above
 
 ---
 
