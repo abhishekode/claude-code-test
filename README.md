@@ -1,6 +1,6 @@
 # SSC CGL Exam Predictor Guide
 
-This guide explains how to use the Exam Predictor Skill to analyze SSC CGL exam papers and predict upcoming topics.
+This guide explains how to use the Exam Predictor Skill to analyze SSC CGL exam papers and predict upcoming topics using either **Gemini API** or **Claude API** (Anthropic).
 
 ## How It Works
 
@@ -8,15 +8,15 @@ The Exam Predictor Skill follows this workflow:
 
 1. **Text Extraction** - Extracts text from PDF exam papers in the `exam-papers/` folder
 2. **Text Cleaning** - Removes headers, footers, page numbers, and OCR noise
-3. **AI Analysis** - Sends cleaned text to Gemini API (or Claude API) for pattern analysis
+3. **AI Analysis** - Sends cleaned text to your chosen AI API (Gemini or Claude) for pattern analysis
 4. **Report Generation** - Creates a detailed markdown report with topic predictions
 
 ## Prerequisites
 
 1. **Node.js** (v16+ recommended)
-2. **API Key** - Either:
-   - Gemini API key (free tier available at [Google AI Studio](https://aistudio.google.com/app/apikey))
-   - OR Anthropic API key (if you prefer to use Claude)
+2. **API Key** - Choose ONE:
+   - **Gemini API** (free tier available at [Google AI Studio](https://aistudio.google.com/app/apikey))
+   - **OR Claude API** (Anthropic) (get key at [Anthropic Console](https://console.anthropic.com/))
 
 ## Setup
 
@@ -25,30 +25,102 @@ The Exam Predictor Skill follows this workflow:
 npm install
 ```
 
-### 2. Configure API Key
-Choose ONE of these options:
+### 2. Configure Your API Key
+Choose **either** Gemini **or** Claude setup:
 
-**Option A: Gemini API (used in this implementation)**
+#### 🔹 Option A: Gemini API (Default Configuration)
 1. Get a free key at [Google AI Studio](https://aistudio.google.com/app/apikey)
 2. Create a `.env` file in the project root:
    ```env
    GEMINI_API_KEY=your_gemini_api_key_here
    ```
+3. **No script modifications needed** - the `analyze.ts` script is pre-configured for Gemini
 
-**Option B: Anthropic API (alternative)**
+#### 🔹 Option B: Claude API (Anthropic)
 1. Get a key at [Anthropic Console](https://console.anthropic.com/)
-2. Create a `.env` file:
+2. Install Anthropic SDK: 
+   ```bash
+   npm install @anthropic-ai/sdk
+   ```
+3. Create a `.env` file:
    ```env
    ANTHROPIC_API_KEY=your_anthropic_api_key_here
    ```
-3. Then modify `scripts/analyze.ts` to use Anthropic instead of Gemini (see notes below)
+4. **Modify `scripts/analyze.ts` for Claude**:
+   - Open `scripts/analyze.ts` in your editor
+   - Replace the imports (lines 7-10) with:
+     ```typescript
+     import fs from "fs";
+     import path from "path";
+     import Anthropic from "@anthropic-ai/sdk";
+     import dotenv from "dotenv";
+     ```
+   - Replace the API key check (lines 24-34) with:
+     ```typescript
+     // Check API key
+     const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+     if (!ANTHROPIC_API_KEY) {
+         console.error(`\n❌ ANTHROPIC_API_KEY not set!\n`);
+         console.error(`Option 1 — add to your .env file:`);
+         console.error(`  ANTHROPIC_API_KEY=your_key_here\n`);
+         console.error(`Option 2 — export in terminal:`);
+         console.error(`  export ANTHROPIC_API_KEY=your_key_here\n`);
+         console.error(`Get your key at: https://console.anthropic.com/`);
+         process.exit(1);
+     }
+     ```
+   - Replace the AI initialization (line 36) with:
+     ```typescript
+     const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+     ```
+   - Replace the entire API call section (lines 136-165) with this Claude-specific code:
+     ```typescript
+     let result: object;
+
+     try {
+         const msg = await anthropic.messages.create({
+             model: "claude-3-5-sonnet-20241022",
+             max_tokens: 4096,
+             messages: [{
+                 role: "user",
+                 content: prompt
+             }]
+         });
+
+         const rawText = msg.content[0].text ?? "";
+
+         console.log(`📊 Parsing Claude response...`);
+         result = parseJsonFromResponse(rawText);
+
+     } catch (err: any) {
+         // If JSON parsing fails, retry with stricter system instruction
+         if (err.message?.includes("JSON")) {
+             console.warn(`⚠️  JSON parse failed, retrying with stricter prompt...`);
+
+             const retryResponse = await anthropic.messages.create({
+                 model: "claude-3-5-sonnet-20241022",
+                 max_tokens: 4096,
+                 system: "You are a JSON-only API. Respond with ONLY a valid JSON object. No text before or after. No markdown. No explanation.",
+                 messages: [{
+                     role: "user",
+                     content: prompt
+                 }]
+             });
+
+             result = parseJsonFromResponse(retryResponse.content[0].text ?? "");
+         } else {
+             throw err;
+         }
+     }
+     ```
+   - Save the file
 
 ### 3. Prepare Exam Papers
 Place your SSC CGL question paper PDFs in the `exam-papers/` folder. The skill works best with 3-10 years of past papers.
 
 ## Running the Analysis
 
-Execute these commands in sequence:
+Execute these commands in sequence (same for both APIs once configured):
 
 ```bash
 # Step 1: Extract text from PDFs
@@ -57,12 +129,17 @@ npx tsx scripts/extract.ts ./exam-papers ./extracted-texts
 # Step 2: Clean the extracted text
 npx tsx scripts/clean.ts ./extracted-texts ./cleaned-texts
 
-# Step 3: Analyze with AI (using Gemini by default)
-npx tsx scripts/analyze.ts ./cleaned-texts "SSC CGL" ./claude_response.json
+# Step 3: Analyze with your chosen AI (Gemini or Claude)
+npx tsx scripts/analyze.ts ./cleaned-texts "SSC CGL" ./ai_response.json
 
 # Step 4: Generate the final report
-npx tsx scripts/report.ts ./claude_response.json ./ANALYSIS_RESULTS.md
+npx tsx scripts/report.ts ./ai_response.json ./ANALYSIS_RESULTS.md
 ```
+
+> **Note**: 
+> - For Gemini: Output goes to `claude_response.json` (legacy name, but works)
+> - For Claude: Output goes to `ai_response.json` (you can rename if preferred)
+> - The report script works identically regardless of which API produced the JSON
 
 ## Understanding the Output
 
@@ -77,21 +154,18 @@ The final report `ANALYSIS_RESULTS.md` contains:
 
 ## Customization
 
-### Switching to Claude API
-If you prefer to use Claude instead of Gemini:
-
-1. Install Anthropic SDK: `npm install @anthropic-ai/sdk`
-2. Edit `scripts/analyze.ts`:
-   - Replace the GoogleGenAI import with Anthropic
-   - Update the API key variable to use `ANTHROPIC_API_KEY`
-   - Modify the API call to use Claude's messaging API
-   - Adjust the prompt formatting as needed for Claude
+### Switching Between APIs
+To switch between Gemini and Claude:
+1. Update your `.env` file with the appropriate API key
+2. For Claude: Ensure you've completed the `analyze.ts` modifications (Section 2B above)
+3. For Gemini: Revert `analyze.ts` to original or reinstall dependencies
 
 ### Adjusting Analysis Parameters
 You can modify:
 - Number of top topics predicted (in the prompt in `analyze.ts`)
 - Confidence thresholds
 - Exam name (passed as second argument to analyze.ts)
+- AI model (in the API call section - e.g., try "claude-3-opus-20240229" for Claude)
 
 ## Troubleshooting
 
@@ -107,6 +181,10 @@ If PDFs extract poorly:
 - For scanned PDFs, the skill will automatically attempt OCR via tesseract.js
 - You may need to install system dependencies for OCR (see tesseract.js docs)
 
+### API-Specific Errors
+**Gemini**: Check `GEMINI_API_KEY` in `.env` and [Google AI Studio](https://aistudio.google.com/app/apikey)
+**Claude**: Check `ANTHROPIC_API_KEY` in `.env` and [Anthropic Console](https://console.anthropic.com/)
+
 ### Missing Dependencies
 Run `npm install` again if you get module not found errors.
 
@@ -114,7 +192,7 @@ Run `npm install` again if you get module not found errors.
 
 - `./extracted-texts/` - Raw text extracted from each PDF
 - `./cleaned-texts/` - Cleaned text after noise removal
-- `./claude_response.json` - Raw API response from Gemini/Claude
+- `./ai_response.json` or `./claude_response.json` - Raw API response (depending on your choice)
 - `./ANALYSIS_RESULTS.md` - Final human-readable report (this is what you want!)
 
 ## Privacy & Security
@@ -133,7 +211,7 @@ Run `npm install` again if you get module not found errors.
 
 ## Example Output Snippet
 
-From a recent run:
+From a recent run (using either API):
 ```
 🎯 Top Predictions:
 🥇 Data Interpretation (Pie Charts/Tables)     ██████████ 95%
@@ -149,4 +227,4 @@ This guide and the associated scripts are provided for educational purposes. SSC
 
 ---
 
-**Ready to analyze?** Place your SSC CGL PDFs in `exam-papers/` and run the setup commands above!
+**Ready to analyze?** Place your SSC CGL PDFs in `exam-papers/`, choose your preferred API (Gemini or Claude), set up the credentials, and run the setup commands above!
